@@ -1,0 +1,6 @@
+[theme]
+primaryColor = "#e50914"       # Netflix red / warning lights
+backgroundColor = "#0b0c10"    # very dark background
+secondaryBackgroundColor = "#1f2833"  # dark panel
+textColor = "#c5c6c7"          # soft gray
+font = "sans serif"
