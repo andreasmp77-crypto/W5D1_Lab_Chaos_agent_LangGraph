@@ -3,8 +3,31 @@
 - Student: Andreas Papachristophorou
 - Course: AI Consulting & Integration 2026-07
 - Date: 2026-08-03
+---
+## Comparison: LangChain chaos agent vs LangGraph structured workflow
+
+In my previous lab, the LangChain agent behaved like a free-thinking assistant: it could decide dynamically which step to take next. Sometimes it called a tool first, sometimes it asked a clarifying question, and sometimes it jumped straight to an answer. This made the system flexible and creative, but the exact order of operations was not predictable. It was also harder to see “what happened under the hood” and to prove that the final answer was correct, because the reasoning path depended on the LLM’s decisions at runtime rather than a fixed process.
+
+In this lab, the LangGraph workflow is deliberately more rigid. I define a structured pipeline up front:
+```
+intake → validate → investigate → resolve → close
+```
+with a single conditional branch after validation that can route to a rejection path instead of investigation. The LLM only fills in the content inside each node, but it does not decide the path. This makes the system less “free-form,” but much easier to visualize and trace:
+
+The workflow_path in the shared state shows exactly which nodes ran, in order, for each complaint.
+
+Each node’s outputs (category, validation_passed, investigation_notes, resolution, closure_message) provide a clear chain of thought from input to final result.
+
+This difference matters in real-world contexts like GDPR or regulatory audits: with the structured LangGraph approach, I can prove how a complaint was processed, which checks were applied, and how the final answer was derived. With a more free-form LangChain agent, I get more flexibility but less predictable, less transparent workflows, which makes formal evidence and traceability harder.
 
 ---
+
+## Ful Output
+
+Please open output.md or run `python test_visualize.py`
+
+---
+
 
 ## Code or workflow
 ```
@@ -52,7 +75,7 @@
 
 ## Query, Retrieved or tool evidence, Final output
 
-**Valid complaint**
+### Valid complaint
 
 ```
 Complaint: The Downside Up portal opens at different times each day. How do I predict when?
@@ -100,9 +123,10 @@ To address the concern regarding the inconsistent opening times of the Downside 
   [CLOSURE/REJECT] closure_message:
 Your complaint regarding the inconsistent opening times of the Downside Up portal has been processed and we are taking steps to ensuremore predictable access in the future.
 ```
+
 ---
 
-**Invalid complaint**
+### Invalid complaint
 ```
 ==============================
 Complaint: This is not a valid complaint about something random
