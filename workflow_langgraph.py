@@ -39,14 +39,10 @@ def build_workflow():
     workflow.add_node("close", closure_node)
     workflow.add_node("reject", reject_node)
 
-    # Entry point
-    workflow.set_entry_point("intake")
-
-    # Intake always goes to validate
-    workflow.add_edge("intake", "validate")
-
-    # Conditional routing from validate, using add_conditional_edges
-    workflow.add_conditional_edges(
+   
+    workflow.set_entry_point("intake") # Entry point
+    workflow.add_edge("intake", "validate") # Intake always goes to validate
+    workflow.add_conditional_edges( # Conditional routing from validate, using add_conditional_edges
         "validate",          # node where the decision happens
         validation_router,   # function that inspects state and returns a key
         {
@@ -54,9 +50,7 @@ def build_workflow():
             "reject": "reject",            # if router returns "reject", go to this node
         },
     )
-
-    # Valid complaint path: investigate -> resolve -> close -> END
-    workflow.add_edge("investigate", "resolve")
+    workflow.add_edge("investigate", "resolve")  # Valid complaint path: investigate -> resolve -> close -> END
     workflow.add_edge("resolve", "close")
     workflow.add_edge("close", END)
 
@@ -65,8 +59,6 @@ def build_workflow():
 
     app = workflow.compile()
     return app
-
-
 
 
 def run_complaint(complaint_text: str) -> ComplaintState:
