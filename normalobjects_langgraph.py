@@ -20,17 +20,19 @@ llm = ChatOpenAI(model="gpt-4o-mini", api_key=openai_api_key,)
 
 # This is the form that travels through all workflow stations
 class ComplaintState(TypedDict):
-    complaint: str                    # the original text from the user
-    category: Optional[str]           # portal/monster/psychic/environmental/other
-    status: str                       # current stage label, e.g. "intake", "validated"
-    workflow_path: List[str]          # list of node names visited in order
-    validation_passed: bool           # did validation accept or reject?
-    investigation_notes: Optional[str]  # text gathered in investigation
-    resolution: Optional[str]         # proposed fix
-    closure_message: Optional[str]    # final message back to the user
+    complaint: str
+    category: Optional[str]
+    status: str
+    workflow_path: List[str]
+    validation_passed: bool
+    investigation_notes: Optional[str]
+    resolution: Optional[str]
+    closure_message: Optional[str]
+
 
 # use a small model for lab
-llm = ChatOpenAI(model="gpt-4o-mini")  # or the model your bootcamp uses
+llm = ChatOpenAI(model="gpt-4o-mini")
+
 
 def intake_node(state: ComplaintState) -> ComplaintState:
     """Step 1: Intake - Parse and categorize the complaint"""
@@ -63,31 +65,38 @@ def intake_node(state: ComplaintState) -> ComplaintState:
     print(f"[INTAKE] Categorized as: {category}")
     return new_state
 
+
 # Allowed categories that intake_node can assign
 ALLOWED_CATEGORIES = {"portal", "monster", "psychic", "environmental", "other"}
 
-# Vaitation node
+
 def validation_node(state: ComplaintState) -> ComplaintState:
     """
-    Step 2: Validation - Check if complaint is coherent and on-topic.
+    Step 2: Validation - Check if complaint is coherent, on-topic, and related to Stranger Things.
     - Confirms the category is one of the allowed ones.
-    - Optionally rejects obviously random / nonsense complaints.
+    - Rejects obviously random / nonsense complaints.
+    - Uses the LLM to decide whether the request is actually Stranger Things-related.
     """
-    print("\n[VALIDATION] Validating complaint...") # 1) Log that we entered the validation step
-    category = state.get("category") # 2) Read the current category from the state
-    category_ok = category in ALLOWED_CATEGORIES # 3) Basic category check: True if category is in the allowed list, False otherwise
+    print("\n[VALIDATION] Validating complaint...")
+    category = state.get("category")
+    category_ok = category in ALLOWED_CATEGORIES
 
-    complaint_text = state["complaint"].lower() # 4) Simple "nonsense" filter: Here we just check for the word "random" as a toy rule.
+    complaint_text = state["complaint"].lower()
     is_nonsense = "random" in complaint_text
-   
-    validation_passed = category_ok and not is_nonsense # 5) Combine checks into a single flag: validation_passed is True only if category_ok AND not nonsense
 
+    relevance_prompt = f"""
+    Decide whether this request is clearly related to Stranger Things.
 
-    # 6) Build the new state:
-    #    - Keep everything from the old state (**state)
-    #    - Update validation_passed
-    #    - Append "validate" to workflow_path
-    #    - Set status to "validated" or "rejected"
+    Request: {state["complaint"]}
+
+    Reply with ONLY YES if it is related to Stranger Things.
+    Reply with ONLY NO if it is unrelated to Stranger Things.
+    """
+    relevance_response = llm.invoke([HumanMessage(content=relevance_prompt)])
+    is_stranger_things_related = relevance_response.content.strip().upper().startswith("YES")
+
+    validation_passed = category_ok and not is_nonsense and is_stranger_things_related
+
     new_state: ComplaintState = {
         **state,
         "validation_passed": validation_passed,
@@ -95,14 +104,15 @@ def validation_node(state: ComplaintState) -> ComplaintState:
         "status": "validated" if validation_passed else "rejected",
     }
 
-    
-    print(f"[VALIDATION] Category OK: {category_ok}, Nonsense: {is_nonsense}") # 7) Log the result for debugging and traceability
+    print(
+        f"[VALIDATION] Category OK: {category_ok}, Nonsense: {is_nonsense}, "
+        f"Stranger Things related: {is_stranger_things_related}"
+    )
     print(f"[VALIDATION] Passed: {validation_passed}")
 
-    
-    return new_state  # 8) Return the updated state so the next node can use it
+    return new_state
 
-# Investigation node (placeholder for now)
+
 def investigation_node(state: ComplaintState) -> ComplaintState:
     """Step 3: Investigation - Gather findings based on category and complaint."""
     print("\n[INVESTIGATION] Investigating complaint...")
@@ -111,7 +121,7 @@ def investigation_node(state: ComplaintState) -> ComplaintState:
     category = state.get("category", "other")
 
     investigation_prompt = f"""
-    You are investigating a Downside Up complaint.
+    You are investigating a Downside Up complaint related to Stranger Things TV series.
 
     Category: {category}
     Complaint: {complaint}
@@ -135,7 +145,7 @@ def investigation_node(state: ComplaintState) -> ComplaintState:
     print("[INVESTIGATION] Notes recorded.")
     return new_state
 
-# resolution node
+
 def resolution_node(state: ComplaintState) -> ComplaintState:
     """Step 4: Resolution - Propose a fix based on investigation notes."""
     print("\n[RESOLUTION] Generating resolution...")
@@ -154,7 +164,7 @@ def resolution_node(state: ComplaintState) -> ComplaintState:
     Propose a clear, practical resolution that:
     - Is consistent with the investigation notes.
     - Is safe and reasonable.
-    - Explains the next steps in 2–3 sentences.
+    - Explains the next steps in 2-3 sentences.
     """
 
     response = llm.invoke([HumanMessage(content=resolution_prompt)])
@@ -170,7 +180,7 @@ def resolution_node(state: ComplaintState) -> ComplaintState:
     print("[RESOLUTION] Resolution generated.")
     return new_state
 
-# closure node
+
 def closure_node(state: ComplaintState) -> ComplaintState:
     """Step 5: Closure - Confirm completion and summarize actions."""
     print("\n[CLOSURE] Creating closure message...")
@@ -181,7 +191,7 @@ def closure_node(state: ComplaintState) -> ComplaintState:
     resolution_text = state.get("resolution", "")
 
     closure_prompt = f"""
-    You are closing a Downside Up complaint.
+    You are closing a Downside Up complaint related to Stranger Things TV series.
 
     Category: {category}
     Complaint: {complaint}
@@ -189,7 +199,7 @@ def closure_node(state: ComplaintState) -> ComplaintState:
     Resolution: {resolution_text}
 
     Write a short one line closure message that confirms the complaint has been processed.
-    Uses a calm, professional tone.
+    Use@ a calm tone.
     """
 
     response = llm.invoke([HumanMessage(content=closure_prompt)])
@@ -205,7 +215,7 @@ def closure_node(state: ComplaintState) -> ComplaintState:
     print("[CLOSURE] Closure message saved.")
     return new_state
 
-# reject node
+
 def reject_node(state: ComplaintState) -> ComplaintState:
     """Rejection path for invalid complaints."""
     print("\n[REJECT] Complaint rejected by validation.")

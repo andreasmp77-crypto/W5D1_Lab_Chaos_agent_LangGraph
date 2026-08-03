@@ -1,14 +1,11 @@
 """
-W5D1_Lab_Chaos_agent_LangGraph
-- Week 5 / Day 1
-- Student: Andreas Papachristophorou
-- Course: AI Consulting & Integration 2026-07
-- Date: 2026-08-03
+Compatibility entrypoint for the Streamlit app.
+
+Run with:
+    streamlit run main.py
 """
 
-# main.py
-from workflow_langgraph import run_complaint
-
+from app import main
 
 
 if __name__ == "__main__":
